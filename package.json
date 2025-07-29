@@ -1,0 +1,13 @@
+{
+  "name": "bot-mc-gemini",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.15.0",
+    "dotenv": "^16.0.3",
+    "node-fetch": "^3.3.2"
+  }
+}
