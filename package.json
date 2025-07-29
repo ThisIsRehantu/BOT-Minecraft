@@ -1,13 +1,13 @@
 {
-  "name": "bot-mc-gemini",
+  "name": "bot-minecraft-rehantu",
   "version": "1.0.0",
+  "description": "Bot Minecraft AFK + AI Gemini + Perintah OP",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "mineflayer": "^4.15.0",
-    "dotenv": "^16.0.3",
-    "node-fetch": "^3.3.2"
+    "mineflayer": "^4.5.0",
+    "node-fetch": "^2.6.9"
   }
 }
