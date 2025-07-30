@@ -1,5 +1,5 @@
 import mineflayer from 'mineflayer';
-import { pathfinder, Movements, goals } from 'mineflayer-pathfinder';
+import { pathfinder, Movements } from 'mineflayer-pathfinder';
 import armorManager from 'mineflayer-armor-manager';
 import autoeat from 'mineflayer-auto-eat';
 import dotenv from 'dotenv';
@@ -21,9 +21,10 @@ bot.loadPlugin(autoeat);
 
 let lastResponse = '';
 let lastAIChat = 0;
-
 const worldName = 'BOT';
 const AI_DELAY = 30000;
+const playerLoginTimes = {}; // Untuk fitur reminder istirahat
+const dailyReward = {}; // Untuk fitur hadiah harian
 
 bot.once('spawn', () => {
   const mcData = require('minecraft-data')(bot.version);
@@ -34,14 +35,24 @@ bot.once('spawn', () => {
 
   setInterval(() => {
     if (bot.entity && bot.entity.position) {
-      const { y } = bot.entity.position;
+      const { x, y, z } = bot.entity.position;
+      const angle = Date.now() / 10000;
+      const radius = 1.5;
+      const dx = Math.cos(angle) * radius;
+      const dz = Math.sin(angle) * radius;
       bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 500);
+      bot.look(bot.entity.yaw + 0.1, 0);
+      bot.setControlState('forward', true);
+      setTimeout(() => {
+        bot.setControlState('jump', false);
+        bot.setControlState('forward', false);
+      }, 500);
     }
-  }, 10000);
+  }, 30000);
 
   scheduleExitAndJoin();
   startBroadcasts();
+  startDailyStats();
 });
 
 bot.on('health', () => {
@@ -56,42 +67,47 @@ bot.on('chat', async (username, message) => {
   const now = Date.now();
   const [cmd, ...args] = message.split(' ');
 
+  if (!playerLoginTimes[username]) playerLoginTimes[username] = now;
+
+  if (now - playerLoginTimes[username] >= 7200000) {
+    bot.chat(`@${username}, kamu sudah main 2 jam. Istirahat dulu ya!`);
+    playerLoginTimes[username] = now;
+  }
+
+  if (!dailyReward[username] || moment().diff(dailyReward[username], 'days') >= 1) {
+    bot.chat(`Selamat datang ${username}! Kamu mendapat hadiah harian 🎁`);
+    dailyReward[username] = moment();
+    // Tambahkan pemberian item di sini jika perlu
+  }
+
   if (cmd === '!help') {
-    bot.chat('Fitur: !tanya, !ulangi, !heal, !translate [teks], !motivasi, !info');
-  }
-
-  else if (cmd === '!ulangi') {
+    bot.chat('Fitur: !tanya, !ulangi, !heal, !translate [teks], !motivasi, !info, !kick [nama], !give [item]');
+  } else if (cmd === '!ulangi') {
     bot.chat(lastResponse || 'Belum ada respons.');
-  }
-
-  else if (cmd === '!heal') {
+  } else if (cmd === '!heal') {
     bot.chat(`/effect give ${username} minecraft:instant_health 1 5`);
-  }
+  } else if (cmd === '!give') {
+    const itemName = args.join(' ').toLowerCase();
+    const item = bot.inventory.items().find(i => i.name.includes(itemName));
+    const player = bot.players[username]?.entity;
 
-  else if (cmd === '!give') {
-  const itemName = args.join(' ').toLowerCase();
-  const item = bot.inventory.items().find(i => i.name.includes(itemName));
-  const player = bot.players[username]?.entity;
+    if (!player) {
+      bot.chat('Player tidak ditemukan.');
+      return;
+    }
 
-  if (!player) {
-    bot.chat('Player tidak ditemukan.');
-    return;
-  }
-
-  if (item) {
-    bot.lookAt(player.position.offset(0, 1.6, 0), true, () => {
-      bot.tossStack(item).then(() => {
-        bot.chat(`Memberikan ${item.name} ke ${username}`);
-      }).catch(() => {
-        bot.chat('Gagal memberikan item.');
+    if (item) {
+      bot.lookAt(player.position.offset(0, 1.6, 0), true, () => {
+        bot.tossStack(item).then(() => {
+          bot.chat(`Memberikan ${item.name} ke ${username}`);
+        }).catch(() => {
+          bot.chat('Gagal memberikan item.');
+        });
       });
-    });
-  } else {
-    bot.chat(`Item "${itemName}" tidak ditemukan.`);
-  }
-  }
-
-  else if (cmd === '!translate' || cmd === '!motivasi' || cmd === '!tanya') {
+    } else {
+      bot.chat(`Item "${itemName}" tidak ditemukan.`);
+    }
+  } else if (cmd === '!translate' || cmd === '!motivasi' || cmd === '!tanya') {
     if (now - lastAIChat < AI_DELAY) {
       const wait = Math.ceil((AI_DELAY - (now - lastAIChat)) / 1000);
       bot.chat(`Tunggu ${wait} detik sebelum menggunakan AI lagi.`);
@@ -107,13 +123,9 @@ bot.on('chat', async (username, message) => {
     lastResponse = result;
     lastAIChat = Date.now();
     bot.chat(result);
-  }
-
-  else if (cmd === '!kick' && args[0]) {
+  } else if (cmd === '!kick' && args[0]) {
     bot.chat(`/kick ${args[0]}`);
-  }
-
-  else if (cmd === '!info') {
+  } else if (cmd === '!info') {
     const players = Object.keys(bot.players).length;
     const pos = bot.entity.position;
     bot.chat(`Pemain online: ${players}. Posisi bot: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}.`);
@@ -138,8 +150,17 @@ function scheduleExitAndJoin() {
   setInterval(() => {
     const now = moment().format('HH:mm');
     if (now === '22:00') {
-      bot.chat('/say Bot keluar dulu ya, sampai besok!');
+      bot.chat('/say Admin keluar dulu ya, sampai besok!');
       bot.quit();
+    }
+    if (now === '06:00') {
+      const { spawn } = require('child_process');
+      spawn('node', [process.argv[1]], { stdio: 'inherit' });
+    }
+    if (now === '05:50') {
+      fetch('https://falixnodes.net/startserver?ip=lifestylee.falixsrv.me').then(() => {
+        console.log('Server Falix dibangunkan.');
+      });
     }
   }, 60000);
 }
@@ -151,4 +172,19 @@ function startBroadcasts() {
     if (now === '09:00') bot.chat('Sudah jam 9, jangan lupa minum air!');
     if (now === '09:50') bot.chat('⚠️ Server akan mati jam 10 malam. Siapkan simpanan data!');
   }, 60000);
-    }
+}
+
+function startDailyStats() {
+  setInterval(() => {
+    const players = Object.keys(bot.players).length;
+    bot.chat(`📊 Statistik Harian: Pemain online sekarang: ${players}`);
+  }, 3600000); // setiap jam
+}
+
+bot.on('end', () => {
+  console.log('Bot disconnected. Mencoba sambung ulang dalam 1 menit.');
+  setTimeout(() => {
+    const { spawn } = require('child_process');
+    spawn('node', [process.argv[1]], { stdio: 'inherit' });
+  }, 60000);
+});
