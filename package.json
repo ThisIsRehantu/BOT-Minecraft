@@ -1,17 +1,20 @@
 {
-  "name": "minecraft-bot-restore",
+  "name": "minecraft-gemini-bot",
   "version": "1.0.0",
-  "description": "Bot Minecraft dengan AI Gemini + fitur otomatis",
+  "description": "Bot Minecraft dengan fitur AI Gemini, auto join world, broadcast, healing, motivasi, translate dan lainnya",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
+  "keywords": ["minecraft", "bot", "mineflayer", "AI", "gemini"],
+  "author": "Restore / Simpasini Bananini",
+  "license": "MIT",
   "dependencies": {
-    "mineflayer": "^4.7.0",
+    "mineflayer": "^4.17.1",
     "mineflayer-pathfinder": "^2.3.2",
-    "mineflayer-armor-manager": "^1.1.0",
+    "mineflayer-armor-manager": "^1.1.1",
     "mineflayer-auto-eat": "^1.2.0",
-    "dotenv": "^16.0.3",
+    "dotenv": "^16.3.1",
     "node-fetch": "^3.3.2",
     "moment": "^2.29.4"
   },
